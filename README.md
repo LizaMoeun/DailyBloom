@@ -18,11 +18,3 @@ A beautiful, soft, feminine journaling application designed for mindful reflecti
   - 🌙 Reflective (Lavender)
   - 🌧 Tired (Gray)
 
-## 🎨 Design System
-
-- **Color Palette**: Soft pink gradients (#FFF8F5 to #F8C8DC) on white backgrounds
-- **Typography**: Dark brown text (#4A3F35) instead of harsh black
-- **Spacing**: Generous padding (24-32px) for a calm, breathable layout
-- **Borders**: Rounded corners throughout (16-24px radius)
-- **Effects**: Smooth hover animations and subtle shadows
-
