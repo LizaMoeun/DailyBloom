@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { createContext, useContext, useEffect, useState } from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase";
 
 interface AuthContextType {
   user: User | null;
@@ -19,69 +19,89 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    // Get current session when app loads
+    const getSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session);
+      setUser(data.session?.user ?? null);
       setLoading(false);
-    });
+    };
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    getSession();
 
-    return () => subscription.unsubscribe();
+    // Listen to auth changes (login, logout, signup)
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
+  // Sign up new user
   const signUp = async (email: string, password: string, name: string) => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: window.location.origin,
           data: {
-            name,
+            name: name,
           },
         },
       });
+
       return { error };
-    } catch (error) {
-      return { error: error as Error };
+    } catch (err) {
+      return { error: err as Error };
     }
   };
 
+  // Login existing user
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
       return { error };
-    } catch (error) {
-      return { error: error as Error };
+    } catch (err) {
+      return { error: err as Error };
     }
   };
 
+  // Logout
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
   };
 
-  return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = {
+    user,
+    session,
+    loading,
+    signUp,
+    signIn,
+    signOut,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// Custom hook
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+
+  if (!context) {
+    throw new Error("useAuth must be used inside AuthProvider");
   }
+
   return context;
 }
