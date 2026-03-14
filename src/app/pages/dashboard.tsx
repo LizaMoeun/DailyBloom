@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { AppSidebar } from '../components/app-sidebar';
 import { Search } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient'; // backend Supabase client
 
 type Mood = 'happy' | 'inspired' | 'calm' | 'reflective' | 'tired';
 
@@ -10,7 +11,7 @@ interface JournalEntry {
   title: string;
   content: string;
   mood: Mood;
-  date: string;
+  created_at: string;
 }
 
 const moodConfig = {
@@ -25,6 +26,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const isAuth = localStorage.getItem('isAuthenticated');
@@ -33,11 +35,26 @@ export function Dashboard() {
       return;
     }
 
-    const stored = localStorage.getItem('journalEntries');
-    if (stored) {
-      setEntries(JSON.parse(stored));
-    }
+    fetchEntries();
   }, [navigate]);
+
+  const fetchEntries = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('journal_entries')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    setLoading(false);
+
+    if (error) {
+      console.error('Error fetching entries:', error);
+      alert('Failed to load entries');
+      return;
+    }
+
+    setEntries(data || []);
+  };
 
   const filteredEntries = entries.filter(entry =>
     entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -47,7 +64,7 @@ export function Dashboard() {
   return (
     <div className="flex min-h-screen bg-white">
       <AppSidebar />
-      
+
       <div className="flex-1">
         {/* Header */}
         <header 
@@ -81,7 +98,9 @@ export function Dashboard() {
 
         {/* Entries Grid */}
         <div className="p-8">
-          {filteredEntries.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-24 text-xl opacity-70" style={{ color: '#4A3F35' }}>Loading entries...</div>
+          ) : filteredEntries.length === 0 ? (
             <div className="text-center py-24">
               <div className="text-6xl mb-4">📔</div>
               <h2 className="text-2xl mb-2" style={{ color: '#4A3F35' }}>No entries yet</h2>
@@ -105,7 +124,7 @@ export function Dashboard() {
                 >
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm opacity-60" style={{ color: '#4A3F35' }}>
-                      {new Date(entry.date).toLocaleDateString('en-US', { 
+                      {new Date(entry.created_at).toLocaleDateString('en-US', { 
                         month: 'short', 
                         day: 'numeric',
                         year: 'numeric'

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router';
 import { AppSidebar } from '../components/app-sidebar';
 import { Edit2, Trash2, ArrowLeft } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 type Mood = 'happy' | 'inspired' | 'calm' | 'reflective' | 'tired';
 
@@ -10,7 +11,7 @@ interface JournalEntry {
   title: string;
   content: string;
   mood: Mood;
-  date: string;
+  created_at: string;
 }
 
 const moodConfig = {
@@ -37,6 +38,7 @@ export function JournalDetail() {
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editMood, setEditMood] = useState<Mood>('happy');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const isAuth = localStorage.getItem('isAuthenticated');
@@ -45,49 +47,92 @@ export function JournalDetail() {
       return;
     }
 
-    const stored = localStorage.getItem('journalEntries');
-    if (stored) {
-      const entries = JSON.parse(stored);
-      const found = entries.find((e: JournalEntry) => e.id === id);
-      if (found) {
-        setEntry(found);
-        setEditTitle(found.title);
-        setEditContent(found.content);
-        setEditMood(found.mood);
-      }
-    }
+    fetchEntry();
   }, [id, navigate]);
 
-  const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this entry?')) {
-      const stored = localStorage.getItem('journalEntries');
-      if (stored) {
-        const entries = JSON.parse(stored);
-        const filtered = entries.filter((e: JournalEntry) => e.id !== id);
-        localStorage.setItem('journalEntries', JSON.stringify(filtered));
-        navigate('/dashboard');
-      }
+  const fetchEntry = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('journal_entries')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    setLoading(false);
+
+    if (error) {
+      console.error('Error fetching entry:', error);
+      alert('Failed to load entry');
+      navigate('/dashboard');
+      return;
     }
+
+    setEntry(data);
+    setEditTitle(data.title);
+    setEditContent(data.content);
+    setEditMood(data.mood);
   };
 
-  const handleSave = () => {
-    const stored = localStorage.getItem('journalEntries');
-    if (stored) {
-      const entries = JSON.parse(stored);
-      const index = entries.findIndex((e: JournalEntry) => e.id === id);
-      if (index !== -1) {
-        entries[index] = {
-          ...entries[index],
-          title: editTitle,
-          content: editContent,
-          mood: editMood,
-        };
-        localStorage.setItem('journalEntries', JSON.stringify(entries));
-        setEntry(entries[index]);
-        setIsEditing(false);
-      }
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this entry?')) return;
+
+    setLoading(true);
+    const { error } = await supabase
+      .from('journal_entries')
+      .delete()
+      .eq('id', id);
+
+    setLoading(false);
+
+    if (error) {
+      console.error('Error deleting entry:', error);
+      alert('Failed to delete entry');
+      return;
     }
+
+    navigate('/dashboard');
   };
+
+  const handleSave = async () => {
+    if (!editTitle || !editContent) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('journal_entries')
+      .update({
+        title: editTitle,
+        content: editContent,
+        mood: editMood,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    setLoading(false);
+
+    if (error) {
+      console.error('Error updating entry:', error);
+      alert('Failed to update entry');
+      return;
+    }
+
+    setEntry(data);
+    setIsEditing(false);
+  };
+
+  if (loading && !entry) {
+    return (
+      <div className="flex min-h-screen bg-white">
+        <AppSidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <p style={{ color: '#4A3F35' }}>Loading entry...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!entry) {
     return (
@@ -106,7 +151,6 @@ export function JournalDetail() {
       
       <div className="flex-1 p-8">
         <div className="max-w-4xl mx-auto">
-          {/* Back Button */}
           <Link
             to="/dashboard"
             className="inline-flex items-center gap-2 px-4 py-2 mb-6 rounded-full transition-all hover:scale-105"
@@ -116,17 +160,13 @@ export function JournalDetail() {
             Back to Dashboard
           </Link>
 
-          <div 
-            className="bg-white rounded-3xl shadow-xl"
-            style={{ padding: '48px' }}
-          >
+          <div className="bg-white rounded-3xl shadow-xl" style={{ padding: '48px' }}>
             {isEditing ? (
               <>
                 <h1 className="text-2xl mb-8" style={{ color: '#4A3F35' }}>
                   Edit Entry
                 </h1>
 
-                {/* Mood Selector */}
                 <div className="mb-6">
                   <label className="block mb-4 opacity-70" style={{ color: '#4A3F35' }}>
                     Select your mood
@@ -156,11 +196,7 @@ export function JournalDetail() {
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     className="w-full px-6 py-4 rounded-2xl border-2 focus:outline-none text-xl"
-                    style={{ 
-                      borderColor: '#F8C8DC', 
-                      color: '#4A3F35',
-                      backgroundColor: 'white'
-                    }}
+                    style={{ borderColor: '#F8C8DC', color: '#4A3F35', backgroundColor: 'white' }}
                   />
                 </div>
 
@@ -168,22 +204,17 @@ export function JournalDetail() {
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   className="w-full px-6 py-4 rounded-2xl border-2 focus:outline-none resize-none mb-8"
-                  style={{ 
-                    borderColor: '#F8C8DC', 
-                    color: '#4A3F35',
-                    backgroundColor: 'white',
-                    minHeight: '300px',
-                    lineHeight: '1.8'
-                  }}
+                  style={{ borderColor: '#F8C8DC', color: '#4A3F35', backgroundColor: 'white', minHeight: '300px', lineHeight: '1.8' }}
                 />
 
                 <div className="flex gap-4">
                   <button
                     onClick={handleSave}
+                    disabled={loading}
                     className="px-8 py-3 rounded-xl transition-all hover:scale-105 shadow-lg"
                     style={{ background: 'linear-gradient(135deg, #F8C8DC 0%, #E8B8CC 100%)', color: '#4A3F35' }}
                   >
-                    Save Changes
+                    {loading ? 'Saving...' : 'Save Changes'}
                   </button>
                   <button
                     onClick={() => setIsEditing(false)}
@@ -199,20 +230,14 @@ export function JournalDetail() {
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4">
                     <span className="opacity-60" style={{ color: '#4A3F35' }}>
-                      {new Date(entry.date).toLocaleDateString('en-US', { 
+                      {new Date(entry.created_at).toLocaleDateString('en-US', { 
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long', 
                         day: 'numeric'
                       })}
                     </span>
-                    <div 
-                      className="px-4 py-2 rounded-full"
-                      style={{ 
-                        backgroundColor: moodConfig[entry.mood].color,
-                        color: '#4A3F35'
-                      }}
-                    >
+                    <div className="px-4 py-2 rounded-full" style={{ backgroundColor: moodConfig[entry.mood].color, color: '#4A3F35' }}>
                       {moodConfig[entry.mood].emoji} {moodConfig[entry.mood].label}
                     </div>
                   </div>
@@ -222,10 +247,7 @@ export function JournalDetail() {
                   {entry.title}
                 </h1>
 
-                <div 
-                  className="mb-12 whitespace-pre-wrap"
-                  style={{ color: '#4A3F35', lineHeight: '1.8', fontSize: '1.125rem' }}
-                >
+                <div className="mb-12 whitespace-pre-wrap" style={{ color: '#4A3F35', lineHeight: '1.8', fontSize: '1.125rem' }}>
                   {entry.content}
                 </div>
 
@@ -240,6 +262,7 @@ export function JournalDetail() {
                   </button>
                   <button
                     onClick={handleDelete}
+                    disabled={loading}
                     className="flex items-center gap-2 px-8 py-3 rounded-xl transition-all hover:scale-105"
                     style={{ border: '2px solid #FF6B6B', color: '#FF6B6B', backgroundColor: 'white' }}
                   >

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { AppSidebar } from '../components/app-sidebar';
+import { supabase } from '../lib/supabaseClient';
 
 type Mood = 'happy' | 'inspired' | 'calm' | 'reflective' | 'tired';
 
@@ -17,6 +18,7 @@ export function CreateJournal() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [mood, setMood] = useState<Mood>('happy');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const isAuth = localStorage.getItem('isAuthenticated');
@@ -25,24 +27,32 @@ export function CreateJournal() {
     }
   }, [navigate]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title || !content) {
       alert('Please fill in all fields');
       return;
     }
 
-    const newEntry = {
-      id: Date.now().toString(),
-      title,
-      content,
-      mood,
-      date: new Date().toISOString(),
-    };
+    setLoading(true);
 
-    const stored = localStorage.getItem('journalEntries');
-    const entries = stored ? JSON.parse(stored) : [];
-    entries.unshift(newEntry);
-    localStorage.setItem('journalEntries', JSON.stringify(entries));
+    const { error } = await supabase
+      .from('journal_entries')
+      .insert([
+        {
+          title: title,
+          content: content,
+          mood: mood,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+    setLoading(false);
+
+    if (error) {
+      console.error(error);
+      alert('Error saving entry');
+      return;
+    }
 
     navigate('/dashboard');
   };
@@ -50,13 +60,10 @@ export function CreateJournal() {
   return (
     <div className="flex min-h-screen bg-white">
       <AppSidebar />
-      
+
       <div className="flex-1 p-8">
         <div className="max-w-4xl mx-auto">
-          <div 
-            className="bg-white rounded-3xl shadow-xl"
-            style={{ padding: '48px' }}
-          >
+          <div className="bg-white rounded-3xl shadow-xl" style={{ padding: '48px' }}>
             <h1 className="text-3xl mb-8" style={{ color: '#4A3F35' }}>
               How are you feeling today?
             </h1>
@@ -66,6 +73,7 @@ export function CreateJournal() {
               <label className="block mb-4 opacity-70" style={{ color: '#4A3F35' }}>
                 Select your mood
               </label>
+
               <div className="flex flex-wrap gap-3">
                 {moodOptions.map((option) => (
                   <button
@@ -76,7 +84,10 @@ export function CreateJournal() {
                     style={{
                       backgroundColor: option.color,
                       color: '#4A3F35',
-                      border: mood === option.value ? '3px solid #4A3F35' : '3px solid transparent',
+                      border:
+                        mood === option.value
+                          ? '3px solid #4A3F35'
+                          : '3px solid transparent',
                     }}
                   >
                     {option.emoji} {option.label}
@@ -90,15 +101,16 @@ export function CreateJournal() {
               <label className="block mb-2 opacity-70" style={{ color: '#4A3F35' }}>
                 Title
               </label>
+
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full px-6 py-4 rounded-2xl border-2 focus:outline-none text-xl"
-                style={{ 
-                  borderColor: '#F8C8DC', 
+                style={{
+                  borderColor: '#F8C8DC',
                   color: '#4A3F35',
-                  backgroundColor: 'white'
+                  backgroundColor: 'white',
                 }}
                 placeholder="Give your entry a title..."
               />
@@ -113,12 +125,12 @@ export function CreateJournal() {
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 className="w-full px-6 py-4 rounded-2xl border-2 focus:outline-none resize-none"
-                style={{ 
-                  borderColor: '#F8C8DC', 
+                style={{
+                  borderColor: '#F8C8DC',
                   color: '#4A3F35',
                   backgroundColor: 'white',
                   minHeight: '300px',
-                  lineHeight: '1.8'
+                  lineHeight: '1.8',
                 }}
                 placeholder="Write your thoughts here..."
               />
@@ -128,15 +140,24 @@ export function CreateJournal() {
             <div className="flex gap-4">
               <button
                 onClick={handleSave}
+                disabled={loading}
                 className="px-8 py-3 rounded-xl transition-all hover:scale-105 shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #F8C8DC 0%, #E8B8CC 100%)', color: '#4A3F35' }}
+                style={{
+                  background: 'linear-gradient(135deg, #F8C8DC 0%, #E8B8CC 100%)',
+                  color: '#4A3F35',
+                }}
               >
-                Save Entry
+                {loading ? 'Saving...' : 'Save Entry'}
               </button>
+
               <button
                 onClick={() => navigate('/dashboard')}
                 className="px-8 py-3 rounded-xl transition-all hover:scale-105"
-                style={{ border: '2px solid #F8C8DC', color: '#4A3F35', backgroundColor: 'white' }}
+                style={{
+                  border: '2px solid #F8C8DC',
+                  color: '#4A3F35',
+                  backgroundColor: 'white',
+                }}
               >
                 Cancel
               </button>
