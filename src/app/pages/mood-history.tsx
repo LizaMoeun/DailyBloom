@@ -54,7 +54,7 @@ export function MoodHistory() {
 
     if (error) {
       console.error('Error fetching journal entries:', error);
-      alert('Failed to load mood history');
+      alert(`Failed to load mood history: ${error.message}`);
       return;
     }
 

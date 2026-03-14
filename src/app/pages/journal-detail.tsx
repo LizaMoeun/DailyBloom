@@ -62,7 +62,7 @@ export function JournalDetail() {
 
     if (error) {
       console.error('Error fetching entry:', error);
-      alert('Failed to load entry');
+      alert(`Failed to load entry: ${error.message}`);
       navigate('/dashboard');
       return;
     }
@@ -86,7 +86,7 @@ export function JournalDetail() {
 
     if (error) {
       console.error('Error deleting entry:', error);
-      alert('Failed to delete entry');
+      alert(`Failed to delete entry: ${error.message}`);
       return;
     }
 
@@ -115,7 +115,7 @@ export function JournalDetail() {
 
     if (error) {
       console.error('Error updating entry:', error);
-      alert('Failed to update entry');
+      alert(`Failed to update entry: ${error.message}`);
       return;
     }
 

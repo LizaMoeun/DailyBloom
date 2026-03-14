@@ -49,7 +49,7 @@ export function Dashboard() {
 
     if (error) {
       console.error('Error fetching entries:', error);
-      alert('Failed to load entries');
+      alert(`Failed to load entries: ${error.message}`);
       return;
     }
 

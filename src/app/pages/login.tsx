@@ -23,6 +23,8 @@ export function Login() {
     if (error) {
       alert(`Login failed: ${error.message}`);
     } else {
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('userName', data.user?.user_metadata.full_name || 'User');
       alert('Login successful!');
       navigate('/dashboard');
     }

@@ -20,11 +20,15 @@ export function CreateJournal() {
   const [mood, setMood] = useState<Mood>('happy');
   const [loading, setLoading] = useState(false);
 
+  // Check if user is authenticated
   useEffect(() => {
-    const isAuth = localStorage.getItem('isAuthenticated');
-    if (!isAuth) {
-      navigate('/login');
-    }
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/login');
+      }
+    };
+    checkAuth();
   }, [navigate]);
 
   const handleSave = async () => {
@@ -35,22 +39,29 @@ export function CreateJournal() {
 
     setLoading(true);
 
-    const { error } = await supabase
-      .from('journal_entries')
-      .insert([
-        {
-          title: title,
-          content: content,
-          mood: mood,
-          created_at: new Date().toISOString(),
-        },
-      ]);
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      alert('You must be logged in to save a journal entry');
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.from('journal_entries').insert([
+      {
+        user_id: user.id, // Add user_id for proper relation
+        title,
+        content,
+        mood,
+        created_at: new Date().toISOString(),
+      },
+    ]);
 
     setLoading(false);
 
     if (error) {
-      console.error(error);
-      alert('Error saving entry');
+      console.error('Supabase error:', error);
+      alert(`Error saving entry: ${error.message}`);
       return;
     }
 

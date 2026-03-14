@@ -55,6 +55,7 @@ export function Verify() {
       setErrorMsg(error.message);
       setStatus('error');
     } else {
+      localStorage.setItem('isAuthenticated', 'true');
       setStatus('success');
       setTimeout(() => navigate('/dashboard'), 2000);
     }

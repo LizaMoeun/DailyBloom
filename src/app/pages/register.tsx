@@ -31,6 +31,7 @@ export function Register() {
     if (error) {
       alert(`Error: ${error.message}`);
     } else {
+      localStorage.setItem('userEmail', email);
       alert('Registration successful! Check your email for verification.');
       navigate('/verify');
     }

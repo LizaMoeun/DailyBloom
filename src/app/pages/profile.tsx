@@ -44,7 +44,7 @@ export function Profile() {
   }, [navigate]);
 
   const fetchProfile = async () => {
-    const user = supabase.auth.user();
+    const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setName(user.user_metadata.full_name || 'User');
       setEmail(user.email || 'user@example.com');
@@ -70,7 +70,8 @@ export function Profile() {
     }
 
     const moodCounts = data.reduce((acc: Record<Mood, number>, entry) => {
-      acc[entry.mood] = (acc[entry.mood] || 0) + 1;
+      const mood = entry.mood as Mood;
+      acc[mood] = (acc[mood] || 0) + 1;
       return acc;
     }, { happy: 0, inspired: 0, calm: 0, reflective: 0, tired: 0 });
 
@@ -110,16 +111,17 @@ export function Profile() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = supabase.auth.user();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase.auth.update({
+    const { error } = await supabase.auth.updateUser({
       data: { full_name: name },
     });
 
     if (error) {
       alert('Failed to update profile: ' + error.message);
     } else {
+      localStorage.setItem('userName', name);
       alert('Profile updated successfully!');
     }
   };

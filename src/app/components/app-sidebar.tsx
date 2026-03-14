@@ -1,12 +1,15 @@
 import { Link, useNavigate, useLocation } from 'react-router';
 import { Home, PlusCircle, TrendingUp, User, LogOut } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userName');
     navigate('/');
   };
 
